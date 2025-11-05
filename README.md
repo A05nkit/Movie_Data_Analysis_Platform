@@ -1,316 +1,102 @@
-# 🎬 Movie Analytics Platform
+# 🎬 Movie Data Analysis Platform
 
-A Python-based movie data analysis and recommendation platform built on the MovieLens dataset. Demonstrates advanced analytics, a clean layered architecture, and modern Python practices.
+A FastAPI-powered service that loads MovieLens-style CSV files, cleans and validates them with pandas, and exposes movie analytics, personalized insights, and recommendation endpoints. The project emphasises a layered architecture, thorough validation, and reproducible visual reports.
 
-## Table of Contents
+## Features
 
-- Key features
-- Architecture
-- Data processing & analysis
-- API endpoints
-- Setup & running
-- Testing & quality
-- Error handling & logging
-- Performance considerations
-- Recommendations
-- AI assistance usage
+- **Data ingestion & hygiene** – Load CSV assets from the configurable `data/` directory, drop duplicates, and enforce schema integrity for the movies and ratings datasets before any computation runs.【F:app/core/data_processor.py†L12-L110】【F:app/infrastructure/dataset_loader.py†L11-L37】
+- **Exploratory analytics** – Produce dataset summaries, top-movie leaderboards, genre trends, user statistics, and time-series metrics through the `MovieAnalyzer` service layer.【F:app/services/analysis_service.py†L12-L64】【F:app/core/movie_analyzer.py†L11-L142】
+- **Explainable recommendations** – Generate similar-movie suggestions and user-tailored picks via a genre-overlap recommender that honours validation and referential integrity checks.【F:app/services/recommendation_service.py†L10-L37】【F:app/core/recommender.py†L11-L173】
+- **Automated reporting** – Build PNG visualisations and an HTML dashboard with collision-resistant filenames so concurrent requests never overwrite prior output.【F:app/core/data_visualizer.py†L15-L107】【F:app/services/report_service.py†L10-L33】
+- **Robust API surface** – FastAPI routers expose analytics, movies, and user endpoints, while the application maps domain exceptions to clear HTTP responses.【F:app/api/routers/movies.py†L12-L31】【F:app/api/routers/users.py†L15-L32】【F:app/api/routers/analytics.py†L31-L46】【F:app/main.py†L23-L159】
+- **Confidence via tests** – Unit and integration suites cover the API contract, core analytics, and recommender behaviour using FastAPI’s TestClient and in-memory dataframes.【F:tests/test_main.py†L1-L15】【F:tests/integration/test_api_endpoints.py†L1-L70】
 
----
+## Project Structure
 
-## Key Features
-
-- Robust data processing: efficient loading and cleaning of MovieLens CSVs
-- Statistical analysis: per-movie and per-genre metrics with significance thresholds
-- Genre analytics: trend and popularity analysis
-- User insights: per-user behavior and preferences
-- Smart recommendations: content-based recommender (explainable)
-- Visual analytics: interactive HTML dashboard and charts
-- Quality assurance: unit and integration tests
-
----
-
-## Core Architecture
-
-Root layout:
-
-```text
-movie-analytics/
+```
+Movie_Data_Analysis_Platform/
 ├─ app/
-│  ├─ api/               # FastAPI endpoints and DI
-│  ├─ core/              # Domain logic and analytics
-│  ├─ services/          # Business orchestration layer
-│  ├─ models/            # Domain entities and DTOs
-│  ├─ config/            # Settings (pydantic BaseSettings)
-│  ├─ infrastructure/    # Dataset loader, logging, cache
-│  └─ main.py            # FastAPI app, exception mapping
-├─ tests/                # Unit + integration tests
-├─ data/                 # MovieLens CSVs
-├─ reports/              # Generated HTML + plots
-└─ README.md
+│  ├─ api/                # FastAPI routers and dependency wiring
+│  ├─ services/           # Application orchestration layer
+│  ├─ core/               # Data processing, analytics, recommender, visuals
+│  ├─ models/             # Pydantic DTOs
+│  ├─ config/             # Environment-aware settings
+│  ├─ infrastructure/     # CSV loader, logging helpers
+│  └─ main.py             # FastAPI app factory + exception mapping
+├─ data/                  # MovieLens CSV inputs (movies.csv, ratings.csv, ...)
+├─ reports/               # Generated PNG charts and HTML dashboards
+├─ tests/                 # Unit and integration coverage
+└─ requirements.txt       # Runtime and tooling dependencies
 ```
 
-Layers and responsibilities:
+## Getting Started
 
-- API layer (app/api)
+### 1. Prerequisites
 
-  - FastAPI routers: movies.py, users.py, analytics.py
-  - DI via dependencies.py (simple singleton factories)
-  - Pydantic DTOs for validation
+- Python 3.9 or newer
+- `pip` for dependency management
 
-- Service layer (app/services)
+### 2. Installation
 
-  - AnalysisService: orchestrates DataProcessor + MovieAnalyzer
-  - RecommendationService: wraps SimpleRecommender
-  - ReportService: builds dashboard using analyzer + visualizer
-
-- Core / Domain (app/core)
-
-  - DataProcessor: load, clean, filter, and basic stats
-  - MovieAnalyzer: top movies, genre trends, user stats, time series, summary
-  - DataVisualizer: charts and HTML report generation
-  - SimpleRecommender: content-based recommendations
-  - interfaces.py, exceptions.py: abstractions and domain errors
-
-- Infrastructure (app/infrastructure)
-
-  - DatasetLoader: CSV I/O
-  - logging_config.py: centralized logging
-  - cache.py: small singleton helpers
-
-- Models (app/models)
-
-  - domain.py: domain entities (Movie, UserRating, ...)
-  - dto.py: Pydantic DTOs for API boundaries
-
-  ### 2.3 Architecture Decisions & Trade-offs
-
-- **Layered design instead of a monolith script**  
-  Rather than writing a single notebook or script, the project is split into `api`, `services`, `core`, `infrastructure`, and `models`. This mirrors clean architecture and makes it easy to test and evolve individual pieces (e.g., swapping out the recommender).
-
-- **Interfaces and dependency injection**  
-  Even though Python doesn’t have C#-style interfaces, I modelled contracts using `abc.ABC` and injected concrete implementations in `api/dependencies.py`. This decouples web, orchestration, and core logic and makes unit testing straightforward.
-
-- **In-memory analytics instead of a database**  
-  For this assessment, everything runs in-memory using pandas. For larger datasets, I would consider:
-
-  - Persisted pre-aggregations (e.g., in a columnar store),
-  - Loading data in chunks,
-  - Or streaming new ratings into a separate storage layer.
-
-- **Simple content-based recommender**  
-  The `SimpleRecommender` is intentionally straightforward (genre overlap + rating quality). It is explainable and easy to extend, without introducing heavyweight dependencies or model training pipelines for this assignment.
-
-- **HTML report over notebook-only output**  
-  In addition to code and APIs, a static HTML dashboard is generated so that non-technical stakeholders could consume the key charts and summaries without running notebooks.
-
----
-
-## 3. Data Processing & Analysis
-
-Datasets (expected under data/):
-
-- data/movies.csv — movieId, title, genres
-- data/ratings.csv — userId, movieId, rating, timestamp
-
-DataProcessor responsibilities:
-
-- Load CSVs via DatasetLoader
-- Clean duplicates and validate rows
-- Provide dataset stats (row_count, column_count, numeric summary)
-- Support generic filtering by column
-
-MovieAnalyzer responsibilities:
-
-- Per-movie metrics: avg_rating, rating_count
-- Top movies: filter by min_ratings, sort by avg_rating then rating_count
-- Genre trends: explode multi-genre rows, compute avg_rating & rating_count per genre
-- User statistics: per-user avg rating, counts, rating distribution, genre preferences
-- Time series: date conversion and daily aggregates (rating_count, avg_rating)
-- Dataset summary: descriptive stats and derived aggregates
-
-### 3.3 Key Insights from the MovieLens Dataset
-
-After running the analysis endpoints on the MovieLens data, a few patterns emerge:
-
-- **Ratings distribution**  
-  Most ratings cluster in the positive range (around 3.0–4.5), with relatively few very low scores. This suggests users are generally positively biased when they choose to rate a movie at all.
-
-- **Movie popularity vs. quality**  
-  Highly rated movies do not always have many ratings, and vice versa. The correlation between average rating and rating count (computed in `/analytics/summary`) is weak-to-moderate, which motivated the use of a **minimum rating count threshold** when ranking top movies.
-
-- **Genre dynamics**  
-  Genres like `<fill from /analytics/genre-trends>` tend to have the highest rating counts, whereas niche genres have fewer ratings but sometimes higher average scores. This distinction is captured in the `avg_rating` and `rating_count` metrics returned by `/analytics/genre-trends`.
-
-- **User behavior**  
-  A small fraction of very active users contribute a large number of ratings, while most users have relatively few. This long-tail pattern is visible in the user activity distribution in `/analytics/summary`.
-
----
-
-## 4. API Endpoints
-
-All endpoints expose OpenAPI docs at /docs.
-
-Movies
-
-- GET /movies/stats — basic movies dataset stats
-- GET /movies/top?limit={limit}&min_ratings={min_ratings} — top movies (title, genres, avg_rating, rating_count)
-- GET /movies/{movie_id}/similar?limit={limit} — similar movie IDs (genre overlap + rating quality)
-
-Users
-
-- GET /users/{user_id}/stats — per-user stats: avg rating, count, distribution, genre prefs
-- GET /users/{user_id}/recommendations?limit={limit} — recommended movie IDs for user
-
-Analytics
-
-- GET /analytics/genre-trends — avg_rating and rating_count per genre
-- GET /analytics/time-series — daily points: date, avg_rating, rating_count
-- GET /analytics/summary — dataset-level summary and percentiles
-- GET /analytics/report — generates reports/dashboard.html and returns its path
-
-## 4.1 Example API Usage
-
-Assuming the server is running at `http://127.0.0.1:8000`:
-
-**Top movies**
-
-````bash
-curl "http://127.0.0.1:8000/movies/top?limit=10&min_ratings=50"
-
-#  User statistics
-curl "http://127.0.0.1:8000/users/1/stats"
-
-# User recommendations
-curl "http://127.0.0.1:8000/users/1/recommendations?limit=10"
-
-#Genre trends
-curl "http://127.0.0.1:8000/analytics/genre-trends"
-
-#Dataset summary
-curl "http://127.0.0.1:8000/analytics/summary"
-
-#Generate HTML report
-curl "http://127.0.0.1:8000/analytics/report"
-# -> returns {"report_path": "reports/dashboard.html"}
-
----
-
-## 5. Setup & Running
-
-Requirements
-
-- Python 3.9+ (tested through 3.13)
-- pip, virtualenv
-
-Installation (example Windows PowerShell)
-
-```powershell
+```bash
 python -m venv .venv
-.venv\Scripts\activate
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
-````
+```
 
-Place MovieLens CSVs into data/:
+### 3. Configure Data Paths (optional)
 
-- data/movies.csv
-- data/ratings.csv
+All paths default to the bundled `data/` and `reports/` folders, and can be overridden with environment variables prefixed by `MOVIE_APP_` (e.g., `MOVIE_APP_DATA_FOLDER=/path/to/csvs`).【F:app/config/settings.py†L6-L21】
 
-Run API
+### 4. Launch the API
 
 ```bash
 uvicorn app.main:app --reload
 ```
 
-Open Swagger UI: http://127.0.0.1:8000/docs
+Then visit <http://127.0.0.1:8000/docs> for interactive Swagger docs and sample requests.
 
----
+## API Overview
 
-## 6. Testing & Quality
+| Endpoint | Method | Description |
+| --- | --- | --- |
+| `/` | GET | Health probe with app metadata.【F:app/main.py†L32-L41】 |
+| `/movies/stats` | GET | Summarise the movies dataset (row counts, numeric statistics).【F:app/api/routers/movies.py†L12-L14】 |
+| `/movies/top` | GET | Return top movies filtered by `limit` and `min_ratings` query parameters.【F:app/api/routers/movies.py†L17-L22】 |
+| `/movies/{movie_id}/similar` | GET | Recommend movies sharing genres with the given title.【F:app/api/routers/movies.py†L25-L31】 |
+| `/users/{user_id}/stats` | GET | Aggregate a user’s activity, genre preferences, and rating distribution.【F:app/api/routers/users.py†L15-L20】 |
+| `/users/{user_id}/recommendations` | GET | Suggest unseen titles tailored to the user’s favourite genres.【F:app/api/routers/users.py†L23-L32】 |
+| `/analytics/genre-trends` | GET | Genre-level averages and rating volumes.【F:app/api/routers/analytics.py†L31-L33】 |
+| `/analytics/time-series` | GET | Daily average rating trends and activity counts.【F:app/api/routers/analytics.py†L36-L38】 |
+| `/analytics/report` | GET | Generate charts and an HTML dashboard; returns filesystem path.【F:app/api/routers/analytics.py†L41-L46】 |
 
-Test layout:
+## Generating Reports
 
-- tests/unit/
-  - test_data_processor.py
-  - test_movie_analyzer.py
-  - test_recommender.py
-- tests/integration/
-  - test_api_endpoints.py
+Calling `/analytics/report` will:
 
-Run tests:
+1. Create a ratings histogram and genre popularity bar chart with unique filenames under `reports/` to prevent collisions.【F:app/core/data_visualizer.py†L21-L66】
+2. Assemble those assets into a self-contained HTML dashboard saved alongside the images.【F:app/core/data_visualizer.py†L67-L107】【F:app/services/report_service.py†L16-L33】
+
+The response payload contains the path to the HTML file. Host the `reports/` directory with any static file server to share dashboards.
+
+## Testing
+
+Run the complete suite:
 
 ```bash
 pytest
 ```
 
-Notes: core components are unit-tested with in-memory fakes; integration tests use FastAPI TestClient.
+The tests exercise the FastAPI surface, analytics computations, and the recommender’s genre logic using small in-memory fixtures.【F:tests/test_main.py†L1-L15】【F:tests/integration/test_api_endpoints.py†L27-L70】
 
----
+## Error Handling & Logging
 
-## 7. Error Handling & Logging
+Domain-specific exceptions translate into precise HTTP responses (422 for validation, 400 for domain errors, 500 for unexpected issues) and are logged with contextual metadata when raised.【F:app/main.py†L44-L151】 Logging is configured once at startup via `configure_logging()` for consistent formatting across the service.【F:app/main.py†L23-L28】【F:app/infrastructure/logging_config.py†L1-L8】
 
-Domain errors (app/core/exceptions.py):
+## Extending the Platform
 
-- AppError base class
-- DataLoadError, DataValidationError, AnalysisError, RecommendationError, VisualizationError
+- Swap the CSV loader for a database-backed implementation by providing a different `DatasetLoader` without touching the API layer.【F:app/api/dependencies.py†L1-L34】
+- Replace `SimpleRecommender` with a model-based strategy while reusing validation and DTOs.【F:app/services/recommendation_service.py†L24-L37】【F:app/models/dto.py†L8-L74】
+- Enhance dashboards by expanding `ReportService` or the `DataVisualizer` to include additional plots or export formats.【F:app/services/report_service.py†L16-L33】【F:app/core/data_visualizer.py†L21-L107】
 
-FastAPI maps domain errors to HTTP responses:
-
-- 422 — validation issues
-- 400 — domain parameter errors (missing/invalid)
-- 500 — unexpected AppError cases
-
-Logging configured in app/infrastructure/logging_config.py and used in exception handlers.
-
----
-
-## 8. Performance Considerations
-
-- Data loaded and cleaned once at service startup and reused
-- MovieAnalyzer precomputes and caches aggregates to avoid repeated groupby operations
-- Numeric dtype tightening (float32, int32) where appropriate
-- In-memory caches:
-  - \_movie_stats_cache, \_genre_trends_cache, \_time_series_cache, \_dataset_summary_cache
-- AnalysisService caches TopMovieDto lists by (limit, min_ratings)
-
-### 8. Performance Optimizations
-
-Although the MovieLens dataset fits comfortably in memory, a few optimizations were applied:
-
-- **Single-pass loading and cleaning**  
-  The datasets are loaded and cleaned once at application startup (`AnalysisService.__init__`), then reused across requests. This avoids repeated disk IO and reduces latency for API calls.
-
-- **Pandas group-by and vectorized operations**  
-  All analytics are implemented with `groupby`, `agg`, `merge`, and vectorized operations rather than Python loops. This leverages pandas’ C-optimized internals for speed.
-
-- **Precomputed aggregates with in-memory caching**  
-  `MovieAnalyzer` caches expensive computations like:
-
-  - Per-movie stats (`avg_rating`, `rating_count`),
-  - Genre trends,
-  - Time-series aggregates,
-  - Dataset summary statistics.  
-    These are reused across requests without recomputation unless the underlying data changes.
-
-- **Dtype narrowing**  
-  The ratings dataframe narrows numeric columns to smaller dtypes where appropriate (`float32`, `int32`). This reduces memory footprint and can improve cache efficiency for large data.
-
-If this were a production system on much larger datasets, I would consider:
-
-- Using categorical dtypes for `userId`, `movieId`, and `genres`,
-- Adding indices on frequently joined columns,
-- Chunked loading or an analytical database (e.g., DuckDB, BigQuery).
-
----
-
-## 9. Recommendations (Simple, Explainable)
-
-SimpleRecommender:
-
-- Similar movies: Jaccard similarity on genre sets, ranked by similarity, avg rating, rating count
-- User recommendations: derive favourite genres from ratings >= 4.0, recommend unseen movies matching those genres ranked by avg rating and rating count
-
-Designed to be replaceable with more advanced models (matrix factorization, embeddings, etc.).
-
----
-
-## 10. AI Assistance Usage
+Enjoy exploring movie data with a clean, test-driven toolkit! 🎥
