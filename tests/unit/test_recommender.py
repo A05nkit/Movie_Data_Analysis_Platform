@@ -1,4 +1,3 @@
-# tests/test_recommender.py
 import pandas as pd
 import pytest
 

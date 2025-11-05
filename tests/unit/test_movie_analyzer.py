@@ -1,4 +1,3 @@
-# tests/test_movie_analyzer.py
 from datetime import date
 
 import pandas as pd

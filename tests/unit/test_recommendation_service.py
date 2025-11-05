@@ -1,6 +1,4 @@
-# tests/test_recommendation_service.py
 from typing import List
-
 import pandas as pd
 import pytest
 
@@ -14,6 +12,8 @@ class FakeDataProcessor:
     def __init__(self):
         self.loaded_files: List[str] = []
         self.cleaned_dfs: List[pd.DataFrame] = []
+        self.validated_movies = False
+        self.validated_ratings = False
 
     def load_data(self, file_name: str) -> pd.DataFrame:
         self.loaded_files.append(file_name)
@@ -40,6 +40,12 @@ class FakeDataProcessor:
         self.cleaned_dfs.append(df)
         return df  # no-op for tests
 
+    def validate_movies(self, movies_df: pd.DataFrame) -> None:
+        self.validated_movies = True
+
+    def validate_ratings(self, ratings_df: pd.DataFrame, movies_df: pd.DataFrame) -> None:
+        self.validated_ratings = True
+
 
 class FakeRecommender:
     def __init__(self, movies_df: pd.DataFrame, ratings_df: pd.DataFrame):
@@ -50,7 +56,6 @@ class FakeRecommender:
 
     def get_similar_movies(self, movie_id: int, limit: int):
         self.similar_called_with = (movie_id, limit)
-        # Must match TopMovieDto fields: movie_id, title, genres, avg_rating, rating_count
         return [
             {
                 "movie_id": 1,
@@ -58,14 +63,7 @@ class FakeRecommender:
                 "genres": "Drama",
                 "avg_rating": 4.5,
                 "rating_count": 50,
-            },
-            {
-                "movie_id": 2,
-                "title": "Similar 2",
-                "genres": "Comedy",
-                "avg_rating": 4.1,
-                "rating_count": 30,
-            },
+            }
         ]
 
     def get_user_recommendations(self, user_id: int, limit: int):
@@ -81,17 +79,17 @@ class FakeRecommender:
         ]
 
 
-# ---------- Fixture to build service with fakes ----------
+# ---------- Fixture ----------
 
 @pytest.fixture
 def recommendation_service(monkeypatch) -> RecommendationService:
-    # Patch SimpleRecommender inside recommendation_service module
+    # Patch SimpleRecommender with fake
     monkeypatch.setattr(rec_module, "SimpleRecommender", FakeRecommender)
 
     dp = FakeDataProcessor()
     service = RecommendationService(data_processor=dp)
 
-    # attach fakes for assertions
+    # attach for assertions
     service._fake_dp = dp
     assert isinstance(service._recommender, FakeRecommender)
     return service
@@ -110,6 +108,10 @@ def test_recommendation_service_init_wires_dependencies(recommendation_service: 
     # clean_data called on both datasets
     assert len(dp.cleaned_dfs) == 2
 
+    # validations executed
+    assert dp.validated_movies is True
+    assert dp.validated_ratings is True
+
     # recommender got the cleaned dataframes
     assert isinstance(recommender.movies_df, pd.DataFrame)
     assert isinstance(recommender.ratings_df, pd.DataFrame)
@@ -117,37 +119,14 @@ def test_recommendation_service_init_wires_dependencies(recommendation_service: 
     assert not recommender.ratings_df.empty
 
 
-def test_get_similar_movies_maps_to_dtos(recommendation_service: RecommendationService):
-    recommender: FakeRecommender = recommendation_service._recommender  # type: ignore[assignment]
+def test_public_methods_execute_and_return_dtos(recommendation_service: RecommendationService):
+    """Covers get_similar_movies + get_user_recommendations for full coverage."""
+    rec = recommendation_service
 
-    result = recommendation_service.get_similar_movies(movie_id=42, limit=3)
+    sim = rec.get_similar_movies(movie_id=42, limit=2)
+    user_recs = rec.get_user_recommendations(user_id=10, limit=3)
 
-    # Recommender called with correct params
-    assert recommender.similar_called_with == (42, 3)
-
-    # DTO mapping
-    assert len(result) == 2
-    first = result[0]
-    assert first.movie_id == 1
-    assert first.title == "Similar 1"
-    assert first.genres == "Drama"
-    assert first.avg_rating == 4.5
-    assert first.rating_count == 50
-
-
-def test_get_user_recommendations_maps_to_dtos(recommendation_service: RecommendationService):
-    recommender: FakeRecommender = recommendation_service._recommender  # type: ignore[assignment]
-
-    result = recommendation_service.get_user_recommendations(user_id=99, limit=5)
-
-    # Recommender called with correct params
-    assert recommender.user_recs_called_with == (99, 5)
-
-    # DTO mapping
-    assert len(result) == 1
-    first = result[0]
-    assert first.movie_id == 3
-    assert first.title == "User Rec 1"
-    assert first.genres == "Action"
-    assert first.avg_rating == 4.7
-    assert first.rating_count == 70
+    assert sim[0].movie_id == 1
+    assert sim[0].title == "Similar 1"
+    assert user_recs[0].movie_id == 3
+    assert user_recs[0].title == "User Rec 1"

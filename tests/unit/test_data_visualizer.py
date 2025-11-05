@@ -1,9 +1,9 @@
-# tests/test_data_visualizer.py
 from pathlib import Path
 import builtins
+import os
 
 import matplotlib
-matplotlib.use("Agg")  # safe non-GUI backend for tests
+matplotlib.use("Agg")
 
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -15,18 +15,17 @@ from app.config.settings import settings
 
 
 def test_create_rating_distribution_happy_path(tmp_path, monkeypatch):
-    # Use temp reports folder
     monkeypatch.setattr(settings, "reports_folder", str(tmp_path))
 
-    viz = DataVisualizer()  # covers __init__ + os.makedirs
-
+    viz = DataVisualizer()
     df = pd.DataFrame({"rating": [3.0, 4.0, 5.0]})
 
     path_str = viz.create_rating_distribution(df)
     path = Path(path_str)
 
     assert path.exists()
-    assert path.name == "rating_distribution.png"
+    assert path.suffix == ".png"
+    assert path.name.startswith("rating_distribution_")
 
 
 def test_create_rating_distribution_empty_df_raises(tmp_path, monkeypatch):
@@ -56,7 +55,8 @@ def test_plot_genre_popularity_happy_path(tmp_path, monkeypatch):
     path = Path(path_str)
 
     assert path.exists()
-    assert path.name == "genre_popularity.png"
+    assert path.suffix == ".png"
+    assert path.name.startswith("genre_popularity_")
 
 
 def test_plot_genre_popularity_empty_df_raises(tmp_path, monkeypatch):
@@ -72,9 +72,6 @@ def test_plot_genre_popularity_empty_df_raises(tmp_path, monkeypatch):
 
 
 def test_save_plot_error_raises_visualization_error(tmp_path, monkeypatch):
-    """
-    Exercise the exception branch in _save_plot by forcing plt.savefig to fail.
-    """
     monkeypatch.setattr(settings, "reports_folder", str(tmp_path))
     viz = DataVisualizer()
 
@@ -93,27 +90,30 @@ def test_generate_dashboard_report_success(tmp_path, monkeypatch):
     monkeypatch.setattr(settings, "reports_folder", str(tmp_path))
     viz = DataVisualizer()
 
+    # We only care that basenames are used in HTML, so provide any paths
+    rating_dist_path = tmp_path / "rating_distribution_custom.png"
+    genre_plot_path = tmp_path / "genre_popularity_custom.png"
+
     analysis_results = {
-        "rating_distribution_plot": str(tmp_path / "rating_distribution.png"),
-        "genre_popularity_plot": str(tmp_path / "genre_popularity.png"),
+        "rating_distribution_plot": str(rating_dist_path),
+        "genre_popularity_plot": str(genre_plot_path),
     }
 
     report_path_str = viz.generate_dashboard_report(analysis_results)
     report_path = Path(report_path_str)
 
     assert report_path.exists()
+    assert report_path.suffix == ".html"
+    assert report_path.name.startswith("dashboard_")
 
     html = report_path.read_text(encoding="utf-8")
-    # Only basenames are used in HTML
-    assert "rating_distribution.png" in html
-    assert "genre_popularity.png" in html
+    # Only basenames should appear in HTML
+    assert os.path.basename(str(rating_dist_path)) in html
+    assert os.path.basename(str(genre_plot_path)) in html
     assert "<title>Movie Analytics Dashboard</title>" in html
 
 
 def test_generate_dashboard_report_write_error(tmp_path, monkeypatch):
-    """
-    Exercise the exception branch when writing the HTML file fails.
-    """
     monkeypatch.setattr(settings, "reports_folder", str(tmp_path))
     viz = DataVisualizer()
 
@@ -125,8 +125,8 @@ def test_generate_dashboard_report_write_error(tmp_path, monkeypatch):
     real_open = builtins.open
 
     def fake_open(*args, **kwargs):
-        # Make only this specific write fail, leave other opens intact
-        if str(args[0]).endswith("dashboard.html") and "w" in args[1]:
+        # Make only dashboard writes fail
+        if str(args[0]).endswith(".html") and "w" in args[1]:
             raise OSError("disk full")
         return real_open(*args, **kwargs)
 

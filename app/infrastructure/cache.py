@@ -1,4 +1,3 @@
-# app/infrastructure/cache.py
 from __future__ import annotations
 
 from functools import lru_cache

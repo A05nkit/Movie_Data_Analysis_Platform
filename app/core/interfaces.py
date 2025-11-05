@@ -1,4 +1,3 @@
-# app/core/interfaces.py
 from __future__ import annotations
 
 from abc import ABC, abstractmethod

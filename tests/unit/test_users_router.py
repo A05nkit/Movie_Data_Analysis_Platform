@@ -1,5 +1,3 @@
-# tests/test_users_router.py
-
 from app.api.routers.users import (
     get_user_stats,
     get_user_recommendations,

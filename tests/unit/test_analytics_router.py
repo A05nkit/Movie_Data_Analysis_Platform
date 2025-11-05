@@ -1,4 +1,3 @@
-# tests/test_analytics_router.py
 from datetime import date
 
 from app.api.routers.analytics import (

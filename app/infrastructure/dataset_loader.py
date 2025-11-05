@@ -1,4 +1,3 @@
-# app/infrastructure/dataset_loader.py
 from __future__ import annotations
 
 import os
@@ -12,7 +11,7 @@ from app.core.exceptions import DataLoadError
 class DatasetLoader:
 
     
-    """Low-level CSV access (keeps file system concerns out of core)."""
+    """Low-level CSV access."""
 
     def load_csv(self, relative_path: str) -> pd.DataFrame:
         full_path = os.path.join(settings.data_folder, relative_path)

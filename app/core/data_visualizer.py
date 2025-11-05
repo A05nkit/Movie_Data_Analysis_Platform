@@ -1,7 +1,7 @@
-# app/core/data_visualizer.py
 from __future__ import annotations
 
 import os
+import uuid
 from typing import Dict, Any
 
 import matplotlib.pyplot as plt
@@ -19,7 +19,13 @@ class DataVisualizer(IDataVisualizer):
         os.makedirs(settings.reports_folder, exist_ok=True)
 
     def _save_plot(self, name: str) -> str:
-        path = os.path.join(settings.reports_folder, name)
+        """
+        Saving the current matplotlib figure under a unique filename derived
+        from `name` to avoid different requests clobbering each other's images.
+        """
+        base, ext = os.path.splitext(name)
+        unique_name = f"{base}_{uuid.uuid4().hex}{ext}"
+        path = os.path.join(settings.reports_folder, unique_name)
         try:
             plt.tight_layout()
             plt.savefig(path)
@@ -41,6 +47,7 @@ class DataVisualizer(IDataVisualizer):
         plt.ylabel("Count")
         plt.title("Rating Distribution")
 
+     
         return self._save_plot("rating_distribution.png")
 
     def plot_genre_popularity(self, df: pd.DataFrame) -> str:
@@ -57,11 +64,15 @@ class DataVisualizer(IDataVisualizer):
 
         return self._save_plot("genre_popularity.png")
 
-    def generate_dashboard_report(self, analysis_results: Dict[str, Any]) -> str:
+    def generate_dashboard_report(self, analysis_results: Dict[str, Any] ) -> str:
         """
         Very simple HTML dashboard that references generated plots.
+
+        Using a unique HTML filename per report to avoid concurrent
+        requests overwriting each other's dashboards.
         """
-        report_path = os.path.join(settings.reports_folder, "dashboard.html")
+        report_filename = f"dashboard_{uuid.uuid4().hex}.html"
+        report_path = os.path.join(settings.reports_folder, report_filename)
 
         rating_dist_path = analysis_results.get("rating_distribution_plot", "")
         genre_plot_path = analysis_results.get("genre_popularity_plot", "")

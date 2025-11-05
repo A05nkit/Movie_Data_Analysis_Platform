@@ -1,4 +1,3 @@
-# tests/test_main_exceptions.py
 import asyncio
 
 from starlette.requests import Request

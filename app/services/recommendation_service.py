@@ -13,13 +13,19 @@ class RecommendationService:
     def __init__(self, data_processor: DataProcessor) -> None:
         self._data_processor = data_processor
 
-        # Load + clean datasets
+        # Load raw datasets
         movies_raw = self._data_processor.load_data("movies.csv")
         ratings_raw = self._data_processor.load_data("ratings.csv")
 
+        # Clean
         movies_df = self._data_processor.clean_data(movies_raw)
         ratings_df = self._data_processor.clean_data(ratings_raw)
 
+        # Validate just like AnalysisService does
+        self._data_processor.validate_movies(movies_df)
+        self._data_processor.validate_ratings(ratings_df, movies_df)
+
+        # Build recommender on validated data
         self._recommender = SimpleRecommender(movies_df, ratings_df)
 
     def get_similar_movies(self, movie_id: int, limit: int) -> List[TopMovieDto]:

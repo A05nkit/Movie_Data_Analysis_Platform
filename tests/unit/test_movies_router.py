@@ -1,4 +1,3 @@
-# tests/test_movies_router.py
 from app.api.routers.movies import (
     get_movies_stats,
     get_top_movies,

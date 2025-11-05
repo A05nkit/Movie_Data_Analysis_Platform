@@ -17,7 +17,7 @@ A Python-based movie data analysis and recommendation platform built on the Movi
 
 ---
 
-## 🎯 Key Features
+## Key Features
 
 - Robust data processing: efficient loading and cleaning of MovieLens CSVs
 - Statistical analysis: per-movie and per-genre metrics with significance thresholds
@@ -29,7 +29,7 @@ A Python-based movie data analysis and recommendation platform built on the Movi
 
 ---
 
-## 🏗️ Core Architecture
+## Core Architecture
 
 Root layout:
 

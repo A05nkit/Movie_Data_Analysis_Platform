@@ -1,4 +1,3 @@
-# app/api/dependencies.py
 from __future__ import annotations
 from functools import lru_cache
 from app.core.data_processor import DataProcessor

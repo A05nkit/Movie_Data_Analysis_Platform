@@ -1,4 +1,3 @@
-# tests/test_interfaces.py
 from typing import Any, Dict, List
 
 import pandas as pd
@@ -12,7 +11,7 @@ from app.core.interfaces import (
 )
 
 
-# ---------- Dummy implementations to exercise abstract methods ----------
+# ---------- Dummy implementations to exercising abstract methods ----------
 
 class DummyDataProcessor(IDataProcessor):
     def load_data(self, file_path: str) -> pd.DataFrame:

@@ -1,4 +1,3 @@
-# app/core/recommender.py
 from __future__ import annotations
 
 from typing import Any, Dict, List, Optional, Set
@@ -25,7 +24,7 @@ class SimpleRecommender(ISimpleRecommender):
     """
 
     def __init__(self, movies_df: pd.DataFrame, ratings_df: pd.DataFrame) -> None:
-        # Copy to avoid mutating external DataFrames
+        # Copying to avoid mutating external DataFrames
         self.movies_df = movies_df.copy()
         self.ratings_df = ratings_df.copy()
 
@@ -43,8 +42,7 @@ class SimpleRecommender(ISimpleRecommender):
             .agg(avg_rating="mean", rating_count="count")
             .reset_index()
         )
-
-        # Convenience merged view (not strictly required, but handy)
+       
         self._movie_data = self.movies_df.merge(
             self._movie_stats, on="movieId", how="left"
         )
@@ -84,7 +82,7 @@ class SimpleRecommender(ISimpleRecommender):
 
     def get_similar_movies(self, movie_id: int, limit: int = 10) -> List[Dict[str, Any]]:
         """
-        Return a list of similar movies as dicts:
+        Returning a list of similar movies as dicts:
         {
             "movie_id": int,
             "title": str,
@@ -221,8 +219,7 @@ class SimpleRecommender(ISimpleRecommender):
         ]
 
         if not result:
-            # For this simple implementation, returning an empty list is acceptable,
-            # but we keep a consistent error pattern.
+            # For this simple implementation, returning an empty list is acceptable         
             return []
 
         return result

@@ -1,4 +1,3 @@
-# app/core/movie_analyzer.py
 from __future__ import annotations
 
 from typing import Any, Dict, List
@@ -10,7 +9,7 @@ from app.core.interfaces import IMovieAnalyzer
 
 
 class MovieAnalyzer(IMovieAnalyzer):
-    """Performs analytics based on movies + ratings DataFrames."""
+    """Performing analytics based on movies + ratings DataFrames."""
 
     def __init__(self, movies_df: pd.DataFrame, ratings_df: pd.DataFrame) -> None:
         if movies_df.empty or ratings_df.empty:
@@ -99,7 +98,7 @@ class MovieAnalyzer(IMovieAnalyzer):
         avg_rating = float(user_ratings["rating"].mean())
         rating_count = int(user_ratings.shape[0])
 
-        # Merge with movies to get genres
+        # Merging with movies to get genres
         merged = user_ratings.merge(self.movies_df[["movieId", "genres_list"]], on="movieId", how="left")
         exploded = merged.explode("genres_list")
         genre_stats = (
@@ -125,8 +124,7 @@ class MovieAnalyzer(IMovieAnalyzer):
         }
 
     def generate_time_series_analysis(self) -> Dict[str, Any]:
-        df = self.ratings_df.copy()
-        # MovieLens timestamps are usually Unix seconds
+        df = self.ratings_df.copy()        
         df["datetime"] = pd.to_datetime(df["timestamp"], unit="s")
         df["date"] = df["datetime"].dt.date
 
