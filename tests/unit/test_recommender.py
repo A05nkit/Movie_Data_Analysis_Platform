@@ -137,3 +137,46 @@ def test_get_user_recommendations_returns_empty_when_no_unseen(recommender: Simp
     recs = recommender.get_user_recommendations(user_id=4, limit=10)
 
     assert recs == []
+    
+# ---------- Additional edge case tests ----------
+def test_init_without_genres_column_creates_empty_genres_list(ratings_df):
+    """
+    Cover the __init__ branch where movies_df has NO 'genres' column.
+    """
+    movies_no_genres = pd.DataFrame(
+        {
+            "movieId": [10, 20],
+            "title": ["NoGenre1", "NoGenre2"],
+            # intentionally no "genres" column
+        }
+    )
+
+    rec = SimpleRecommender(movies_no_genres, ratings_df)
+
+    # genres_list should exist and be a list of empty lists
+    assert "genres_list" in rec.movies_df.columns
+    assert rec.movies_df["genres_list"].tolist() == [[], []]
+
+
+def test_user_no_favourite_genres_and_no_unseen_movies(movies_df):
+    """
+    Cover the branch where:
+    - user has ratings but all are < 4.0  -> no favourite genres
+    - user has rated ALL movies          -> no unseen movies
+    => fallback branch + `if not result: return []`
+    """
+    # User 5 rated all movies, but never >= 4.0
+    ratings_all_seen_low = pd.DataFrame(
+        {
+            "userId": [5, 5, 5, 5],
+            "movieId": [1, 2, 3, 4],
+            "rating": [3.5, 3.0, 2.5, 1.0],
+            "timestamp": [1, 1, 1, 1],
+        }
+    )
+
+    rec = SimpleRecommender(movies_df, ratings_all_seen_low)
+
+    recs = rec.get_user_recommendations(user_id=5, limit=10)
+    # No unseen movies + no favourite genres -> empty list
+    assert recs == []
